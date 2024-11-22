@@ -1,0 +1,9 @@
+- name: "Install Semaphore with PostgreSQL"
+  hosts: all
+  become: true
+  gather_facts: yes
+  vars_files:
+    - ./vars/vars.yml
+  roles:
+    - postgres
+    - semaphore

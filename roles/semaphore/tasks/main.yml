@@ -1,0 +1,67 @@
+- name: "Install dependencies"
+  apt:
+    name:
+      - git
+      - wget
+      - ansible
+      - tar
+    state: present
+    update_cache: yes
+
+- name: "Create group and user"
+  user:
+    name: "{{ semaphore_user }}"
+    group: "{{ semaphore_group }}"
+    state: present
+    create_home: no
+
+- name: "Create dir Semaphore"
+  file:
+    path: "{{ semaphore_dir }}"
+    state: directory
+    owner: "{{ semaphore_user }}"
+    group: "{{ semaphore_group }}"
+    mode: '0755'
+
+- name: "Download Semaphore"
+  get_url:
+    url: "https://github.com/ansible-semaphore/semaphore/releases/download/v{{ semaphore_version }}/semaphore_{{ semaphore_version }}_linux_amd64.tar.gz"
+    dest: "/tmp/semaphore.tar.gz"
+    mode: '0644'
+
+- name: "Unarchive Semaphore"
+  unarchive:
+    src: "/tmp/semaphore.tar.gz"
+    dest: "{{ semaphore_dir }}"
+    remote_src: yes
+  notify:
+    - Restart Semaphore
+
+- name: "Create symlink to binary"
+  file:
+    src: "{{ semaphore_dir }}/semaphore"
+    dest: "{{ semaphore_bin }}"
+    state: link
+
+- name: "Create semaphore config file"
+  template:
+    src: semaphore_config.json.j2
+    dest: "{{ semaphore_dir }}/config.json"
+    owner: "{{ semaphore_user }}"
+    group: "{{ semaphore_group }}"
+    mode: '0644'
+
+- name: "Configure systemd for semaphore"
+  template:
+    src: semaphore.service.j2
+    dest: /etc/systemd/system/semaphore.service
+
+  notify:
+    - Reload Systemd
+    - Restart Semaphore
+
+- name: "Make sure semaphore is running"
+  systemd:
+    name: semaphore
+    enabled: yes
+    state: started

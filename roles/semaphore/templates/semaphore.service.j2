@@ -1,0 +1,12 @@
+[Unit]
+Description=Semaphore CI/CD
+After=network.target postgresql.service
+
+[Service]
+User={{ semaphore_user }}
+Group={{ semaphore_group }}
+ExecStart={{ semaphore_bin }} server --config {{ semaphore_dir }}/config.json
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

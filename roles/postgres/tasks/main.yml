@@ -1,0 +1,65 @@
+- name: "Initialise variables"
+  include_role:
+    name: geerlingguy.postgresql
+    tasks_from: variables
+
+- name: "Setup postgres"
+  include_role:
+    name: geerlingguy.postgresql
+
+- name: "Init postgres"
+  include_role:
+    name: geerlingguy.postgresql
+    tasks_from: initialize
+
+- name: "Start PostgreSQL server"
+  systemd:
+    name: "{{ postgresql_daemon }}"
+    state: started
+
+- name: "Configure postgres"
+  include_role:
+    name: geerlingguy.postgresql
+    tasks_from: configure
+
+- name: "Configure users"
+  include_role:
+    name: geerlingguy.postgresql
+    tasks_from: users
+
+- name: "Update postgresql.conf"
+  lineinfile:
+    path: "{{ postgresql_config_path }}/postgresql.conf"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  with_items:
+    - regexp: "#listen_addresses = 'localhost'" # само регулярное выражение (в этом случае просто строка)
+      line: "listen_addresses = '{{ postgres_server_ip }}'" # замена
+    - regexp: "#wal_level = minimal"
+      line: "wal_level = hot_standby"
+    - regexp: "#synchronous_commit = on"
+      line: "synchronous_commit = local"
+
+- name: "Update pg_hba.conf"
+  blockinfile:
+    path: "{{ postgresql_config_path }}/pg_hba.conf"
+    insertafter: "#host replication postgres ::1/128 ident"
+    block: |
+      host {{ db_name }} {{ postgres_user }} 127.0.0.1/32 md5
+      host {{ db_name }} {{ postgres_user }} {{ postgres_server_ip }}/32 md5
+      host all all 0.0.0.0/0 md5
+      host all all ::/0 md5
+
+- name: "Create database"
+  become_user: postgres
+  postgresql_db:
+    name: "{{ db_name }}"
+    state: present
+
+- name: "Create user"
+  become_user: postgres
+  postgresql_user:
+    name: "{{ postgres_user }}"
+    password: "{{ postgres_password }}"
+    priv: "{{ db_name }}:ALL"
+    state: present

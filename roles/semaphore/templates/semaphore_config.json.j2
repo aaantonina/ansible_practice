@@ -1,0 +1,14 @@
+{
+  "db": {
+    "type": "postgres",
+    "host": "{{ semaphore_db_host }}",
+    "port": {{ semaphore_db_port }},
+    "user": "{{ semaphore_db_user }}",
+    "pass": "{{ semaphore_db_password }}",
+    "name": "{{ semaphore_db_name }}",
+    "ssl_mode": "disable"
+  },
+  "port": "3000",
+  "cookie_hash": "random_hash",
+  "cookie_encryption": "random_encryption"
+}
